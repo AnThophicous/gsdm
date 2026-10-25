@@ -1,0 +1,62 @@
+[build-system]
+requires = ["setuptools>=77"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "gsdm"
+version = "1.0.0"
+description = "GSDM (Graph-Structural Decision Model): a non-transformer architecture that reasons over code graphs and returns calibrated decisions, with GVF, a Python vulnerability finder."
+readme = "README.md"
+license = "MPL-2.0"
+license-files = ["LICENSE"]
+authors = [{ name = "Brenno Leon" }]
+requires-python = ">=3.12"
+dependencies = ["numpy>=2.0"]
+keywords = [
+    "gsdm",
+    "graph-structural-decision-model",
+    "graph-neural-network",
+    "gnn",
+    "vulnerability-detection",
+    "static-analysis",
+    "sast",
+    "code-security",
+    "data-flow-analysis",
+    "abstract-syntax-tree",
+    "confidence-calibration",
+    "non-autoregressive",
+    "autograd",
+    "numpy",
+    "machine-learning",
+]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "Intended Audience :: Science/Research",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+    "Topic :: Security",
+    "Topic :: Software Development :: Quality Assurance",
+]
+
+[project.urls]
+Homepage = "https://github.com/AnThophicous/gsdm"
+Repository = "https://github.com/AnThophicous/gsdm"
+Issues = "https://github.com/AnThophicous/gsdm/issues"
+Documentation = "https://github.com/AnThophicous/gsdm/blob/main/docs/SPEC.md"
+
+[project.optional-dependencies]
+dev = ["pytest>=8"]
+
+[project.scripts]
+gvf = "gvf.main:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+pythonpath = ["src"]
+testpaths = ["tests"]

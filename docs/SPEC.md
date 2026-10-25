@@ -123,19 +123,20 @@ edita a antiga). Registradas até agora:
 - [ADR-0002](adr/0002-graph-based-code-representation.md) — Representação do código como grafo (AST/CFG/DFG) via GNN.
 - [ADR-0003](adr/0003-clean-architecture-layering.md) — Organização em camadas Clean Architecture.
 
-Pendentes de escrita antes do primeiro código de produção:
-
-- ADR-0004 — Schema do XML de saída (versionamento, campos obrigatórios).
-- ADR-0005 — Protocolo de calibração de confiança (método de calibração,
-  métrica de avaliação — ex. Brier score / ECE).
-- ADR-0006 — Transporte MCP: contrato da tool `analyze_path`, modo local vs.
-  remoto.
-
-Aceita adicionalmente:
-
+- [ADR-0004](adr/0004-xml-output-schema.md) — Schema do XML de saída (v1).
+- [ADR-0005](adr/0005-confidence-calibration-protocol.md) — Protocolo de
+  calibração de confiança (temperature scaling por categoria, ECE).
 - [ADR-0007](adr/0007-latent-iterative-reasoning.md) — Raciocínio latente
   iterativo no GSDM (múltiplos passos internos antes da decisão final, sem
   geração de linguagem).
+- [ADR-0008](adr/0008-gsdm-0.1.0-implementation-baseline.md) — Base de
+  implementação da GSDM 0.1.0 (Python como linguagem-alvo, NumPy puro,
+  autograd próprio, limitações assumidas).
+
+Pendente (marco 1.1.0):
+
+- ADR-0006 — Transporte MCP: contrato da tool `analyze_path`, modo local vs.
+  remoto. A 1.0.0 expõe apenas CLI.
 
 ## 6. Acceptance Criteria (para o MVP fechar)
 
@@ -185,3 +186,5 @@ Aceita adicionalmente:
 |------------|-----------------------------------------------------------|
 | 2026-10-25 | Rascunho inicial. Escopo MVP fechado em VC-1/VC-2/VC-3.   |
 | 2026-10-25 | Projeto nomeado: arquitetura GSDM, modelo GVF. Licença definida (MPL 2.0). ADR-0007 (raciocínio latente) aceita. |
+| 2026-10-25 | ADRs 0004, 0005 e 0008 aceitas; GSDM 0.1.0 implementada. MCP (ADR-0006) movido para 0.2.0. |
+| 2026-10-25 | A base 0.1.0 da ADR-0008 é publicada como versão 1.0.0. O marco seguinte (MCP, treino em lote) passa a ser 1.1.0. |
