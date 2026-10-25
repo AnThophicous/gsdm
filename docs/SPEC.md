@@ -133,10 +133,15 @@ edita a antiga). Registradas até agora:
   implementação da GSDM 0.1.0 (Python como linguagem-alvo, NumPy puro,
   autograd próprio, limitações assumidas).
 
-Pendente (marco 1.1.0):
+- [ADR-0009](adr/0009-efficient-cpu-training-and-learning-diagnostics.md) —
+  Treino eficiente em CPU (lotes, float32, propagação vetorizada) e
+  diagnóstico de aprendizado (validação por grupo, logs, painel,
+  checkpoints, early stopping) — versão 1.1.0.
+
+Pendente (marco seguinte):
 
 - ADR-0006 — Transporte MCP: contrato da tool `analyze_path`, modo local vs.
-  remoto. A 1.0.0 expõe apenas CLI.
+  remoto. As versões 1.0.0 e 1.1.0 expõem apenas CLI.
 
 ## 6. Acceptance Criteria (para o MVP fechar)
 
@@ -188,3 +193,4 @@ Pendente (marco 1.1.0):
 | 2026-10-25 | Projeto nomeado: arquitetura GSDM, modelo GVF. Licença definida (MPL 2.0). ADR-0007 (raciocínio latente) aceita. |
 | 2026-10-25 | ADRs 0004, 0005 e 0008 aceitas; GSDM 0.1.0 implementada. MCP (ADR-0006) movido para 0.2.0. |
 | 2026-10-25 | A base 0.1.0 da ADR-0008 é publicada como versão 1.0.0. O marco seguinte (MCP, treino em lote) passa a ser 1.1.0. |
+| 2026-10-25 | ADR-0009 aceita: a 1.1.0 prioriza treino eficiente em CPU e diagnóstico de aprendizado; MCP e GPU ficam para depois. |
