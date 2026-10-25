@@ -5,6 +5,7 @@ Built from scratch in pure NumPy: its own autograd, graph neural network, latent
 Ships **GVF (Graph-based Vulnerability Finder)**, the first model on GSDM: a local, explainable vulnerability detector for Python that answers in XML.
 
 [![tests](https://github.com/AnThophicous/gsdm/actions/workflows/tests.yml/badge.svg)](https://github.com/AnThophicous/gsdm/actions/workflows/tests.yml)
+[![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/AnThophicous/gsdm/blob/main/notebooks/gsdm_colab.ipynb)
 [![License: MPL 2.0](https://img.shields.io/badge/License-MPL_2.0-brightgreen.svg)](LICENSE)
 ![Python 3.12+](https://img.shields.io/badge/python-3.12%2B-blue.svg)
 ![Dependencies: NumPy only](https://img.shields.io/badge/dependencies-NumPy%20only-orange.svg)
@@ -71,7 +72,7 @@ such as entropy feed the model, and the trained model makes the decision.
 ### Output
 
 ```xml
-<gvf-report schema-version="1" model="GVF" architecture="GSDM" architecture-version="1.0.0" threshold="0.5000">
+<gvf-report schema-version="1" model="GVF" architecture="GSDM" architecture-version="1.1.0" threshold="0.5000">
   <file path="app/db.py">
     <assessment category="VC-1" name="sql-or-command-injection" confidence="0.9132" flagged="true">
       <location line="12" column="4" />
@@ -100,17 +101,83 @@ python -m venv .venv
 .venv/bin/pytest
 ```
 
-Train from a JSONL manifest (paths relative to the manifest; an empty label list means clean code):
+Train from a JSONL manifest. Paths are relative to the manifest, an empty label list means clean code, and
+`group` names where the file came from (a project, a CVE, a template):
 
 ```json
-{"path": "samples/sql_concat.py", "labels": ["VC-1"]}
-{"path": "samples/safe_query.py", "labels": []}
+{"path": "samples/sql_concat.py", "labels": ["VC-1"], "group": "cve-2024-1234"}
+{"path": "samples/safe_query.py", "labels": [], "group": "internal-api"}
 ```
 
 ```bash
-gvf train dataset/manifest.jsonl --output gvf.npz --reasoning-steps 4
+gvf capacity --hidden-size 128                        # parameters and memory, before you train
+gvf train dataset/manifest.jsonl --output gvf.npz     # logs, dashboard and checkpoint go to gvf.run/
+gvf train dataset/manifest.jsonl --output gvf.npz --epochs 60 --resume   # continue an interrupted run
 gvf analyze path/to/project --model gvf.npz --threshold 0.5
 ```
+
+Try it without installing anything: [open the notebook in Google Colab](https://colab.research.google.com/github/AnThophicous/gsdm/blob/main/notebooks/gsdm_colab.ipynb).
+
+## Is it learning, or memorizing?
+
+A model that has seen near-copies of its validation files will look perfect and fail on new code. GSDM is
+built to catch that:
+
+- **Grouped validation.** Whole groups go either to training or to validation, so validation only contains
+  code from sources the model never saw. Training warns when the manifest has no groups, or when a category
+  has no positive example in validation.
+- **LLM-style training logs**, one line per epoch, also written to `metrics.jsonl`:
+
+  ```text
+  epoch     train       val       gap     ECE     VC-1     VC-2     VC-3   graphs/s
+      8    0.1006    0.3644   +0.2638   0.145        -        -        -      733.3  *
+      9    0.0833    0.3635   +0.2802   0.142        -        -        -      723.5  *
+     10    0.0678    0.3668   +0.2990   0.095        -        -        -      718.1
+  ...
+  best epoch: 9 (early stop) | diagnosis: memorizing - validation loss rose 28% since epoch 9 while training loss fell 84%
+  ```
+
+  (Real output on the synthetic demo dataset: a dozen templates are not enough to learn the patterns, and the
+  diagnosis says so.)
+- **A live dashboard** (`dashboard.html`, one self-contained file, no scripts, light and dark mode) with
+  training vs validation loss, generalization gap, F1 per category and calibration error.
+- **Automatic diagnosis**: `learning`, `memorizing`, `stalled` or `no-validation`, with the evidence.
+- **Early stopping and best weights**: training stops when validation stops improving, and the exported model
+  uses the best validation epoch, not the last one.
+- **Resumable checkpoints**: weights, best weights, Adam state, random state and history. A resumed run is
+  **bit-identical** to an uninterrupted one (tested), and resuming refuses a manifest that changed.
+
+## Performance
+
+Measured with `python benchmarks/benchmark.py` on the reference low-end machine: Intel Celeron N4100
+(4 cores, x86-64-v2, no AVX2), 3.8 GB RAM, no GPU. Same 53,254-parameter model in both versions.
+
+| | 1.0.0 | 1.1.0 |
+|---|---|---|
+| Training throughput | 39 graphs/s | **116 graphs/s** (3×) |
+| Analyze a 2,000-line file (8,805 nodes) | 868 ms | **637 ms** |
+| Peak memory while analyzing it | 34.5 MB | **15.1 MB** |
+
+Where it comes from: graphs are batched into one disjoint graph per step, float32 is the default, and message
+passing uses precomputed scatter plans instead of `np.add.at`. There is no hand-written assembly: NumPy's BLAS
+already picks CPU-specific kernels at run time, and a hand-tuned AVX2 kernel would crash on the reference machine.
+
+### How big can a GSDM model get?
+
+`gvf capacity` answers before you allocate anything. Reasoning depth does not add parameters (the reasoning step
+shares its weights); parameters grow with `(relations + 1) · hidden²`. GSDM 1.1.0 trains in one CPU process:
+
+```text
+$ gvf capacity --target-parameters 1e10
+hidden size                                37,770
+parameters                                 10,000,513,986
+weights (inference, float32)               37.3 GB
+training state (weights, gradients, Adam)  149.0 GB
+estimated training memory                  396.7 GB
+```
+
+Billions of parameters need GPUs and distributed training, which this version does not provide. For this task,
+the useful range today is thousands to a few million parameters, and the real limit is labeled data.
 
 ### Using GSDM for your own model
 
@@ -135,11 +202,12 @@ output = model(graph, reasoning_steps=8)  # reason longer at inference
 print(output.logits.data, output.evidence_node(0))
 ```
 
-## Project status (1.0.0): read this before using it
+## Project status (1.1.0): read this before using it
 
-- ✅ The architecture, training loop, calibration, Python graph builder, XML report and CLI are implemented and tested.
-- ✅ Every autograd operation and the full model are **gradient-checked against finite differences**.
+- ✅ The architecture, batched training, calibration, Python graph builder, XML report and CLI are implemented and tested.
+- ✅ Every autograd operation and the full model are **gradient-checked against finite differences**, batched and unbatched.
 - ✅ The model learns, and generalizes on, relational graph tasks that cannot be solved without reasoning over structure.
+- ✅ Training reports whether the model is learning or memorizing, and checkpoints resume bit-identically.
 - ⚠️ **No pretrained GVF model ships with this repository.** There is no labeled Python vulnerability dataset here
   yet. A model trained on a tiny synthetic set memorizes it and misses unseen code, so do **not** rely on GVF
   for security decisions until it is trained on real data.
@@ -149,9 +217,11 @@ print(output.logits.data, output.evidence_node(0))
 ## Roadmap
 
 - **Dataset**: a labeled Python corpus for VC-1, VC-2 and VC-3 (the classic public sets, Big-Vul and Devign, are C/C++).
-- **1.1.0**: an MCP server so editors and AI agents can call GVF locally or on a VPS ([ADR-0006](docs/SPEC.md)),
-  and batched graph training for speed.
-- Later: adaptive reasoning depth, more languages, cross-file data flow.
+- **GPU backend**: an optional CuPy backend for NVIDIA GPUs, verified against the CPU results on Colab.
+- **MCP server** so editors and AI agents can call GVF locally or on a VPS ([ADR-0006](docs/SPEC.md)).
+- Later: sparse node features, adaptive reasoning depth, more languages, cross-file data flow.
+
+See [CHANGELOG.md](CHANGELOG.md) for what changed in each version.
 
 ## Engineering principles
 
@@ -163,10 +233,13 @@ print(output.logits.data, output.evidence_node(0))
   should not deserialize pickles itself.
 
 ```
-src/gsdm/   architecture: autograd, graph, nn (reasoning encoder, decision head), optim, calibration, training
-src/gvf/    product: domain, application (ports, use cases), adapters (XML, controller), infrastructure, CLI
-tests/      unit (with gradient checks), integration (train → analyze → XML), architecture (dependency rule)
-docs/       SPEC.md and Architecture Decision Records
+src/gsdm/     architecture: autograd, graph, nn, optim, calibration, training, session, checkpoint,
+              diagnostics, reporting, capacity
+src/gvf/      product: domain, application (ports, use cases), adapters (XML, controller), infrastructure, CLI
+tests/        unit (with gradient checks), integration (train → analyze → XML), architecture (dependency rule)
+benchmarks/   benchmark and synthetic demo dataset
+notebooks/    Google Colab notebook
+docs/         SPEC.md and Architecture Decision Records
 ```
 
 ## How GSDM relates to other work

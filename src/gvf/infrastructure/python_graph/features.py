@@ -49,7 +49,7 @@ _WORD = re.compile(r"[a-z]+")
 
 
 def encode_node(node: ast.AST, folded_children: list[ast.AST]) -> np.ndarray:
-    features = np.zeros(FEATURE_SIZE)
+    features = np.zeros(FEATURE_SIZE, dtype=np.float32)
     for kind in [node, *folded_children]:
         features[_type_feature_index(kind)] = 1.0
     for token in node_tokens(node):

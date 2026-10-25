@@ -13,6 +13,8 @@ from gsdm.autograd import (
 )
 from tests.gradient_check import assert_gradients_match
 
+pytestmark = pytest.mark.usefixtures("float64_precision")
+
 
 @pytest.fixture
 def rng() -> np.random.Generator:

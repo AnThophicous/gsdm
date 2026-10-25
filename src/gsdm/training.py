@@ -6,6 +6,7 @@ from __future__ import annotations
 
 from collections.abc import Sequence
 from dataclasses import dataclass
+from typing import Any
 
 import numpy as np
 
@@ -21,12 +22,21 @@ class TrainingExample:
     labels: np.ndarray
 
 
+@dataclass(frozen=True, eq=False)
+class Evaluation:
+    loss: float
+    logits: np.ndarray
+    labels: np.ndarray
+
+
 class Trainer:
+    """One optimization step per mini-batch; the whole batch goes through the model as one disjoint graph."""
+
     def __init__(
         self,
         model: GSDModel,
         optimizer: Adam,
-        batch_size: int = 8,
+        batch_size: int = 32,
         max_gradient_norm: float = 1.0,
         seed: int = 0,
     ) -> None:
@@ -51,18 +61,39 @@ class Trainer:
             total_loss += self._train_batch(batch) * len(batch)
         return total_loss / len(examples)
 
+    def rng_state(self) -> dict[str, Any]:
+        return self._rng.bit_generator.state
+
+    def restore_rng_state(self, state: dict[str, Any]) -> None:
+        self._rng.bit_generator.state = state
+
     def _train_batch(self, batch: Sequence[TrainingExample]) -> float:
         self.optimizer.zero_grad()
-        batch_loss = 0.0
-        for example in batch:
-            loss = binary_cross_entropy_with_logits(self.model(example.graph).logits, example.labels) / len(batch)
-            loss.backward()
-            batch_loss += float(loss.data)
+        graph, labels = _stack(batch)
+        loss = binary_cross_entropy_with_logits(self.model.forward_batch(graph).logits, labels)
+        loss.backward()
         clip_gradient_norm(self.optimizer.parameters, self.max_gradient_norm)
         self.optimizer.step()
-        return batch_loss
+        return float(loss.data)
 
 
-def predict_logits(model: GSDModel, graphs: Sequence[StructuralGraph]) -> np.ndarray:
+def predict_logits(model: GSDModel, graphs: Sequence[StructuralGraph], batch_size: int = 64) -> np.ndarray:
+    rows = []
     with no_grad():
-        return np.array([model(graph).logits.data for graph in graphs]).reshape(len(graphs), model.config.decision_count)
+        for start in range(0, len(graphs), batch_size):
+            batch = StructuralGraph.batch(graphs[start : start + batch_size])
+            rows.append(model.forward_batch(batch).logits.data)
+    return np.concatenate(rows).astype(np.float64) if rows else np.zeros((0, model.config.decision_count))
+
+
+def evaluate(model: GSDModel, examples: Sequence[TrainingExample], batch_size: int = 64) -> Evaluation:
+    if not examples:
+        raise ValueError("cannot evaluate an empty dataset")
+    logits = predict_logits(model, [example.graph for example in examples], batch_size)
+    labels = np.array([example.labels for example in examples], dtype=np.float64)
+    losses = np.maximum(logits, 0.0) - logits * labels + np.log1p(np.exp(-np.abs(logits)))
+    return Evaluation(loss=float(losses.mean()), logits=logits, labels=labels)
+
+
+def _stack(batch: Sequence[TrainingExample]) -> tuple[StructuralGraph, np.ndarray]:
+    return StructuralGraph.batch([example.graph for example in batch]), np.stack([example.labels for example in batch])
