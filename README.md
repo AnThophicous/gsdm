@@ -216,7 +216,9 @@ print(output.logits.data, output.evidence_node(0))
 
 ## Roadmap
 
-- **Dataset**: a labeled Python corpus for VC-1, VC-2 and VC-3 (the classic public sets, Big-Vul and Devign, are C/C++).
+- **Dataset** (in progress, [ADR-0010](docs/adr/0010-cvefixes-dataset.md)): real before/after fixes from
+  [CVEfixes](https://zenodo.org/records/13118970), grouped by repository. Step one, a census of how much usable
+  Python data exists, runs with `python -m dataset_tools.cvefixes` (section 8 of the Colab notebook).
 - **GPU backend**: an optional CuPy backend for NVIDIA GPUs, verified against the CPU results on Colab.
 - **MCP server** so editors and AI agents can call GVF locally or on a VPS ([ADR-0006](docs/SPEC.md)).
 - Later: sparse node features, adaptive reasoning depth, more languages, cross-file data flow.
