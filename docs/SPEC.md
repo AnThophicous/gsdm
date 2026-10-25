@@ -186,3 +186,4 @@ Pendente (marco 0.2.0):
 |------------|-----------------------------------------------------------|
 | 2026-10-25 | Rascunho inicial. Escopo MVP fechado em VC-1/VC-2/VC-3.   |
 | 2026-10-25 | Projeto nomeado: arquitetura GSDM, modelo GVF. Licença definida (MPL 2.0). ADR-0007 (raciocínio latente) aceita. |
+| 2026-10-25 | ADRs 0004, 0005 e 0008 aceitas; GSDM 0.1.0 implementada. MCP (ADR-0006) movido para 0.2.0. |

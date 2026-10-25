@@ -7,11 +7,43 @@ confiança calibrado. Lê código localmente ou via MCP (local ou VPS remota).
 
 **Licença:** [Mozilla Public License 2.0](LICENSE).
 
-## Status
+## Status — 0.1.0
 
-**Em fase de especificação.** Nenhum código de produção foi escrito ainda.
+A arquitetura GSDM e o pipeline do GVF estão implementados e testados:
+autograd próprio, raciocínio latente iterativo, readout por atenção,
+calibração por temperatura, parser Python → grafo, relatório XML e CLI.
+
+**Ainda não existe um modelo GVF treinado.** O repositório não traz
+dataset rotulado; a 0.1.0 entrega a arquitetura verificada, não um
+detector pronto para uso real. Limitações assumidas em
+[ADR-0008](docs/adr/0008-gsdm-0.1.0-implementation-baseline.md).
+
 Ver [docs/SPEC.md](docs/SPEC.md) para o escopo completo e
-[docs/adr/](docs/adr/) para as decisões de arquitetura já tomadas.
+[docs/adr/](docs/adr/) para as decisões de arquitetura.
+
+## Uso
+
+```bash
+python -m venv .venv
+.venv/Scripts/python -m pip install -e ".[dev]"
+.venv/Scripts/python -m pytest
+```
+
+Treinar a partir de um manifesto JSONL (um arquivo por linha, caminhos
+relativos ao manifesto, rótulos `VC-1`/`VC-2`/`VC-3`; lista vazia = limpo):
+
+```json
+{"path": "samples/sql_concat.py", "labels": ["VC-1"]}
+{"path": "samples/safe_query.py", "labels": []}
+```
+
+```bash
+gvf train dataset/manifest.jsonl --output gvf.npz
+gvf analyze path/to/project --model gvf.npz --threshold 0.5
+```
+
+`analyze` imprime o XML (schema v1, [ADR-0004](docs/adr/0004-xml-output-schema.md))
+e sai com `0` (nada sinalizado), `1` (achados sinalizados) ou `2` (erro).
 
 ## Princípios do projeto
 
@@ -41,24 +73,36 @@ Ver [docs/SPEC.md](docs/SPEC.md) para o escopo completo e
 - Nenhuma ADR aceita é editada depois do merge — uma mudança de decisão
   gera uma ADR nova que supersede a anterior.
 
-## Estrutura (planejada, ver ADR-0003)
+## Estrutura (ver ADR-0003 e ADR-0008)
 
 ```
+src/gsdm/              # A arquitetura de treinamento, genérica (não conhece Python nem vulnerabilidades)
+  autograd/            # Diferenciação automática reverse-mode sobre NumPy
+  nn/                  # Camadas, passo de raciocínio, encoder, cabeça de decisão, GSDModel
+  graph.py             # Grafo estrutural heterogêneo
+  optim.py             # Adam, clipping de gradiente
+  calibration.py       # Temperature scaling, ECE
+  training.py          # Trainer
+  persistence.py       # .npz sem pickle
 src/gvf/
-  domain/            # Entidades e regras de negócio puras
-  application/       # Casos de uso + ports (interfaces)
-  adapters/          # Presenters e controllers
-  infrastructure/     # Filesystem, modelo de ML, servidor MCP
-docs/
-  SPEC.md            # Especificação completa (Spec Kit)
-  adr/               # Architecture Decision Records
+  domain/              # Entidades e regras de negócio puras
+  application/         # ports/ (interfaces) + use_cases/
+  adapters/            # presenters/ (XML) + controllers/
+  infrastructure/      # filesystem/, python_graph/ (parser → grafo), model/ (GSDM + treino)
+  main.py              # Composition root (CLI)
 tests/
-  unit/
-  integration/
+  unit/                # gsdm e gvf, incluindo verificação numérica de gradientes
+  integration/         # treino → análise → XML, ponta a ponta
+  architecture/        # regra de dependência da Clean Architecture verificada por teste
+docs/
+  SPEC.md              # Especificação completa (Spec Kit)
+  adr/                 # Architecture Decision Records
 ```
 
 ## Próximos passos
 
-Ver seção 5 de [docs/SPEC.md](docs/SPEC.md) — ADRs pendentes antes do
-primeiro código de produção: schema XML (0004), protocolo de calibração de
-confiança (0005), contrato da tool MCP (0006).
+1. **Dataset rotulado em Python** para VC-1/VC-2/VC-3 — o bloqueio real
+   para um GVF útil (os datasets públicos clássicos, como Big-Vul e
+   Devign, são C/C++).
+2. **0.2.0:** servidor MCP (ADR-0006) e treino em lote de vários grafos
+   por vez (hoje o custo é dominado pelo overhead do Python por operação).
