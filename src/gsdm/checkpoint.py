@@ -46,6 +46,12 @@ def save_checkpoint(path: Path, session: TrainingSession, metadata: dict[str, An
     _write_atomically(path, arrays)
 
 
+def read_checkpoint_metadata(path: Path) -> dict[str, Any]:
+    """Reads only the metadata, e.g. to rebuild the session a checkpoint belongs to before loading it."""
+    with np.load(path, allow_pickle=False) as archive:
+        return json.loads(archive[_HEADER].tobytes().decode("utf-8"))["metadata"]
+
+
 def load_checkpoint(path: Path, session: TrainingSession) -> dict[str, Any]:
     """Restores model, best weights, optimizer, random state and history into session. Returns the metadata."""
     with np.load(path, allow_pickle=False) as archive:

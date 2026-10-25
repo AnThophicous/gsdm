@@ -79,6 +79,12 @@ def test_dashboard_is_self_contained_and_refreshes_while_live():
     assert page.count("<svg") == 4
 
 
+def test_non_negative_series_never_get_a_negative_axis():
+    page = render_dashboard("t", history([(0.9, 0.95), (0.01, 0.7), (0.001, 0.8)]), ["VC-1"], {})
+    loss_chart = page.split("<h2>Loss</h2>", 1)[1].split("</section>", 1)[0]
+    assert not re.search(r">-\d", loss_chart)
+
+
 def test_dashboard_handles_empty_history():
     assert "No data yet" in render_dashboard("t", [], ["VC-1"], {})
 

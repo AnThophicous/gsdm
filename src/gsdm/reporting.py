@@ -204,8 +204,8 @@ def _fmt(value: float | None) -> str:
     return "-" if value is None else f"{value:.3f}"
 
 
-_WIDTH, _HEIGHT = 640, 240
-_LEFT, _RIGHT, _TOP, _BOTTOM = 56, 16, 12, 28
+_WIDTH, _HEIGHT = 480, 220
+_LEFT, _RIGHT, _TOP, _BOTTOM = 58, 12, 18, 30
 
 
 def _chart(
@@ -262,7 +262,7 @@ def _svg(
     if best_epoch is not None:
         x = scale.x(best_epoch)
         parts.append(f'<line class="best" x1="{x:.1f}" x2="{x:.1f}" y1="{_TOP}" y2="{_HEIGHT - _BOTTOM}"/>')
-        parts.append(f'<text class="tick" x="{x:.1f}" y="{_TOP + 10}" text-anchor="middle">best</text>')
+        parts.append(f'<text class="tick" x="{x:.1f}" y="{_TOP - 4}" text-anchor="middle">best</text>')
     for epoch in sorted({epochs[0], epochs[-1]} | ({best_epoch} if best_epoch else set())):
         parts.append(f'<text class="tick" x="{scale.x(epoch):.1f}" y="{_HEIGHT - 8}" text-anchor="middle">{epoch}</text>')
     for line in series:
@@ -295,7 +295,8 @@ def _padded_range(values: Sequence[float], include_zero: bool) -> tuple[float, f
     if high == low:
         return low - 1.0, high + 1.0
     padding = (high - low) * 0.08
-    return low - padding, high + padding
+    floor = 0.0 if low >= 0 else -float("inf")
+    return max(low - padding, floor), high + padding
 
 
 _PAGE = """<!doctype html>
@@ -339,7 +340,7 @@ dt {{ color: var(--muted); font-size: 12px; }} dd {{ margin: 0; font-weight: 600
 svg {{ width: 100%; height: auto; display: block; }}
 svg .grid {{ stroke: var(--line); }} svg .zero {{ stroke: var(--muted); stroke-dasharray: 4 3; }}
 svg .best {{ stroke: var(--muted); stroke-dasharray: 2 4; }}
-svg .tick {{ fill: var(--muted); font-size: 11px; }}
+svg .tick {{ fill: var(--muted); font-size: 15px; }}
 .legend {{ list-style: none; display: flex; flex-wrap: wrap; gap: 12px; padding: 0; margin: 8px 0 0; font-size: 13px; }}
 .swatch {{ display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin-right: 6px; }}
 .empty {{ color: var(--muted); }}

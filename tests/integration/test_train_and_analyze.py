@@ -52,7 +52,7 @@ def write_dataset(directory: Path) -> Path:
             secret = "".join(rng.choice(alphabet, size=32))
             relative = f"sample_{template_index}_{variant}.py"
             (directory / relative).write_text(template.format(v=variable, t=table, secret=secret), encoding="utf-8")
-            entries.append(json.dumps({"path": relative, "labels": labels}))
+            entries.append(json.dumps({"path": relative, "labels": labels, "group": f"template-{template_index}"}))
     manifest = directory / "manifest.jsonl"
     manifest.write_text("\n".join(entries) + "\n", encoding="utf-8")
     return manifest
@@ -129,6 +129,62 @@ def test_training_with_validation_reports_calibration(trained, tmp_path, capsys)
     assert "calibration_error_after:" in output
     temperatures = load_bundle(tmp_path / "m.npz").temperatures
     assert temperatures.shape == (3,) and np.all(temperatures > 0)
+
+
+def test_training_writes_logs_dashboard_and_checkpoint(trained):
+    directory, _, model = trained
+    run = directory / "gvf.run"
+    lines = (run / "metrics.jsonl").read_text(encoding="utf-8").splitlines()
+    assert len(lines) == 40
+    assert json.loads(lines[-1])["epoch"] == 40
+    assert "<svg" in (run / "dashboard.html").read_text(encoding="utf-8")
+    assert (run / "checkpoint.npz").is_file()
+
+
+def test_resume_continues_the_same_run(trained, tmp_path, capsys):
+    _, manifest, _ = trained
+    output = tmp_path / "m.npz"
+    common = ["--output", str(output), "--hidden-size", "8", "--reasoning-steps", "1", "--validation-fraction", "0.3"]
+    assert main(["train", str(manifest), "--epochs", "2", "--patience", "0", *common]) == EXIT_CLEAN
+    capsys.readouterr()
+    assert main(["train", str(manifest), "--epochs", "4", "--resume", *common]) == EXIT_CLEAN
+    out = capsys.readouterr().out
+    assert "resuming from checkpoint" in out
+    assert "epochs_run: 4" in out
+    metrics = (tmp_path / "m.run" / "metrics.jsonl").read_text(encoding="utf-8").splitlines()
+    assert [json.loads(line)["epoch"] for line in metrics] == [1, 2, 3, 4]
+
+
+def test_resume_refuses_a_changed_manifest(trained, tmp_path, capsys):
+    directory, manifest, _ = trained
+    copy = directory / "copy.jsonl"
+    copy.write_text(manifest.read_text(encoding="utf-8"), encoding="utf-8")
+    output = tmp_path / "m.npz"
+    common = ["--output", str(output), "--hidden-size", "8", "--reasoning-steps", "1"]
+    assert main(["train", str(copy), "--epochs", "1", *common]) == EXIT_CLEAN
+    copy.write_text("\n".join(manifest.read_text(encoding="utf-8").splitlines()[:-1]) + "\n", encoding="utf-8")
+    assert main(["train", str(copy), "--epochs", "2", "--resume", *common]) == EXIT_ERROR
+    assert "manifest changed" in capsys.readouterr().err
+    assert main(["train", str(copy), "--epochs", "2", "--resume", "--output", str(tmp_path / "none.npz")]) == EXIT_ERROR
+
+
+def test_ungrouped_validation_prints_a_warning(trained, tmp_path, capsys):
+    directory, manifest, _ = trained
+    ungrouped = directory / "ungrouped.jsonl"
+    entries = [json.loads(line) for line in manifest.read_text(encoding="utf-8").splitlines()]
+    ungrouped.write_text("\n".join(json.dumps({k: v for k, v in e.items() if k != "group"}) for e in entries), encoding="utf-8")
+    main(["train", str(ungrouped), "--output", str(tmp_path / "u.npz"), "--epochs", "1", "--hidden-size", "8"])
+    out = capsys.readouterr().out
+    assert "validation is not grouped" in out
+    assert "grouped_validation: False" in out
+
+
+def test_capacity_command(capsys):
+    assert main(["capacity", "--hidden-size", "64"]) == EXIT_CLEAN
+    assert "parameters" in capsys.readouterr().out
+    assert main(["capacity", "--target-parameters", "1e10"]) == EXIT_CLEAN
+    out = capsys.readouterr().out
+    assert "training state" in out and "GB" in out
 
 
 def test_incompatible_model_is_refused(trained, tmp_path, capsys):
