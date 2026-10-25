@@ -5,6 +5,7 @@
 from __future__ import annotations
 
 from collections.abc import Sequence
+from typing import Any
 
 import numpy as np
 
@@ -46,6 +47,24 @@ class Adam:
     def zero_grad(self) -> None:
         for parameter in self.parameters:
             parameter.grad = None
+
+    def state_dict(self) -> dict[str, Any]:
+        return {
+            "step_count": self.step_count,
+            "first_moments": [moment.copy() for moment in self._first_moments],
+            "second_moments": [moment.copy() for moment in self._second_moments],
+        }
+
+    def load_state_dict(self, state: dict[str, Any]) -> None:
+        first, second = state["first_moments"], state["second_moments"]
+        if len(first) != len(self.parameters) or len(second) != len(self.parameters):
+            raise ValueError("optimizer state does not match the parameter list")
+        for parameter, first_moment, second_moment in zip(self.parameters, first, second):
+            if first_moment.shape != parameter.shape or second_moment.shape != parameter.shape:
+                raise ValueError("optimizer state shape does not match its parameter")
+        self.step_count = int(state["step_count"])
+        self._first_moments = [np.array(m, dtype=p.data.dtype) for m, p in zip(first, self.parameters)]
+        self._second_moments = [np.array(m, dtype=p.data.dtype) for m, p in zip(second, self.parameters)]
 
 
 def clip_gradient_norm(parameters: Sequence[Parameter], max_norm: float) -> float:
