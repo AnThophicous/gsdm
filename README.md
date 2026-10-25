@@ -1,9 +1,11 @@
-# Sentinel (nome provisório)
+# GVF — Graph-based Vulnerability Finder
 
-Motor de ML com arquitetura própria (não-transformer, não-LLM generativo)
-para análise de vulnerabilidades em código, com saída estruturada em XML e
-sistema de confiança calibrado. Lê código localmente ou via MCP (local ou
-VPS remota).
+Modelo de ML com arquitetura própria (GSDM — Graph-Structural Decision
+Model: não-transformer, não-LLM generativo) para análise de
+vulnerabilidades em código, com saída estruturada em XML e sistema de
+confiança calibrado. Lê código localmente ou via MCP (local ou VPS remota).
+
+**Licença:** [Mozilla Public License 2.0](LICENSE).
 
 ## Status
 
@@ -42,7 +44,7 @@ Ver [docs/SPEC.md](docs/SPEC.md) para o escopo completo e
 ## Estrutura (planejada, ver ADR-0003)
 
 ```
-src/sentinel/
+src/gvf/
   domain/            # Entidades e regras de negócio puras
   application/       # Casos de uso + ports (interfaces)
   adapters/          # Presenters e controllers

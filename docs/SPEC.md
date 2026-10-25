@@ -1,4 +1,4 @@
-# Especificação — Projeto "Sentinel" (nome provisório)
+# Especificação — GVF (Graph-based Vulnerability Finder)
 
 > Status: DRAFT — em revisão. Nenhuma linha de código de produção deve ser
 > escrita antes desta spec ser aprovada.
@@ -47,7 +47,8 @@ Precisamos de um sistema que:
 
 - NG1. Não é um concorrente direto do Jev (TypeSafe AI) nem uma cópia da
   arquitetura "System One" deles — a semelhança é apenas conceitual (saída
-  estruturada e não-conversacional), a arquitetura interna é nossa.
+  estruturada e não-conversacional). Nossa categoria de arquitetura tem
+  nome próprio: **GSDM** (ver Glossário, seção 7).
 - NG2. Não é um LLM generalista. Não responde perguntas abertas, não
   conversa, não explica em prosa livre — apenas emite decisões estruturadas.
 - NG3. Não tenta cobrir *todas* as classes de vulnerabilidade (OWASP Top 10
@@ -130,6 +131,12 @@ Pendentes de escrita antes do primeiro código de produção:
 - ADR-0006 — Transporte MCP: contrato da tool `analyze_path`, modo local vs.
   remoto.
 
+Aceita adicionalmente:
+
+- [ADR-0007](adr/0007-latent-iterative-reasoning.md) — Raciocínio latente
+  iterativo no GSDM (múltiplos passos internos antes da decisão final, sem
+  geração de linguagem).
+
 ## 6. Acceptance Criteria (para o MVP fechar)
 
 - AC-1. Dado um arquivo de teste com uma injeção SQL conhecida (dataset de
@@ -151,6 +158,15 @@ Pendentes de escrita antes do primeiro código de produção:
 
 ## 7. Glossário
 
+- **GSDM (Graph-Structural Decision Model)**: a categoria/arquitetura de
+  treinamento deste projeto — não-autoregressiva, opera sobre grafos
+  estruturais (AST/CFG/DFG) em vez de texto solto, emite decisões tipadas
+  com confiança calibrada (ver ADR-0001, ADR-0002, ADR-0007). É o nosso
+  equivalente conceitual ao "System One Model" do Jev, mas nativo de
+  estrutura de código, não de domínio genérico.
+- **GVF (Graph-based Vulnerability Finder)**: o nome do modelo/produto
+  específico deste projeto — uma instância do GSDM treinada para as
+  categorias de vulnerabilidade do escopo (seção 4.1).
 - **Confiança calibrada**: probabilidade que reflete a frequência real de
   acerto — diferente de um score arbitrário sem validação estatística.
 - **Port**: interface definida na camada `application` que a camada
@@ -158,9 +174,14 @@ Pendentes de escrita antes do primeiro código de produção:
   Architecture).
 - **MCP**: Model Context Protocol — protocolo usado para expor a tool de
   análise de código a um cliente, local ou remoto.
+- **Raciocínio latente iterativo**: múltiplas rodadas de refinamento
+  interno (message-passing sobre o grafo) antes da cabeça de decisão emitir
+  o score final — equivalente estrutural de chain-of-thought, nunca
+  verbalizado (ver ADR-0007).
 
 ## 8. Histórico de revisão
 
 | Data       | Mudança                                                  |
 |------------|-----------------------------------------------------------|
 | 2026-10-25 | Rascunho inicial. Escopo MVP fechado em VC-1/VC-2/VC-3.   |
+| 2026-10-25 | Projeto nomeado: arquitetura GSDM, modelo GVF. Licença definida (MPL 2.0). ADR-0007 (raciocínio latente) aceita. |

@@ -20,7 +20,7 @@ são feitas via interfaces (ports), implementadas pelas camadas externas
 (inversão de dependência).
 
 ```
-src/sentinel/
+src/gvf/
   domain/            # Entidades e regras de negócio puras.
                       # Sem import de application/adapters/infrastructure,
                       # sem import de bibliotecas de terceiros (exceto stdlib
