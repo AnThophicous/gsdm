@@ -112,7 +112,10 @@ distribuído, que esta versão não oferece.
 
 ## Roadmap
 
-- **Dataset** rotulado em Python para VC-1, VC-2 e VC-3.
+- **Dataset** (em andamento, [ADR-0010](docs/adr/0010-cvefixes-dataset.md)): correções reais de CVEs do
+  [CVEfixes](https://zenodo.org/records/13118970), em pares antes/depois e agrupadas por repositório. O primeiro
+  passo, o censo de quantos exemplos em Python existem, roda com `python -m dataset_tools.cvefixes` (seção 8 do
+  notebook do Colab).
 - **Backend de GPU** opcional (CuPy, placas NVIDIA), verificado contra os resultados da CPU no Colab.
 - **Servidor MCP** para editores e agentes de IA chamarem o GVF localmente ou numa VPS.
 - Depois: features esparsas, profundidade de raciocínio adaptativa, mais linguagens, fluxo de dados entre arquivos.
