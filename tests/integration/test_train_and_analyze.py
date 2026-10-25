@@ -1,61 +1,19 @@
 """End to end through the composition root: train -> save -> load -> analyze -> XML."""
 
 import json
-import string
 import xml.etree.ElementTree as ElementTree
 from pathlib import Path
 
 import numpy as np
 import pytest
 
+from benchmarks.synthetic_dataset import NAMES, template_count, write_dataset
 from gsdm.persistence import load_bundle, save_bundle
 from gvf.domain import CodeUnit, Confidence
 from gvf.infrastructure.model.detector import GsdmVulnerabilityDetector, IncompatibleModelError
 from gvf.main import EXIT_CLEAN, EXIT_ERROR, EXIT_FINDINGS, main
 
-VULNERABLE = {
-    "VC-1": [
-        'def find(cursor, {v}):\n    query = "SELECT * FROM {t} WHERE id = " + {v}\n    cursor.execute(query)\n',
-        'import os\n\ndef ping({v}):\n    os.system("ping -c 1 " + {v})\n',
-        'import subprocess\n\ndef listing({v}):\n    subprocess.call("ls " + {v}, shell=True)\n',
-    ],
-    "VC-2": [
-        "import pickle\n\ndef restore({v}):\n    return pickle.loads({v})\n",
-        "import yaml\n\ndef parse({v}):\n    return yaml.load({v})\n",
-    ],
-    "VC-3": [
-        'API_KEY = "{secret}"\n',
-        'import db\n\npassword = "{secret}"\ndb.connect(user="admin", password=password)\n',
-    ],
-}
-
-CLEAN = [
-    'def find(cursor, {v}):\n    cursor.execute("SELECT * FROM {t} WHERE id = %s", ({v},))\n',
-    'import subprocess\n\ndef ping({v}):\n    subprocess.run(["ping", "-c", "1", {v}])\n',
-    "import json\n\ndef restore({v}):\n    return json.loads({v})\n",
-    "import yaml\n\ndef parse({v}):\n    return yaml.safe_load({v})\n",
-    'import os\n\nAPI_KEY = os.environ["API_KEY"]\n',
-    'greeting = "hello {t}"\nprint(greeting)\n',
-]
-
-NAMES = [("user_id", "users"), ("payload", "orders"), ("value", "items")]
-DATASET_SIZE = (sum(len(templates) for templates in VULNERABLE.values()) + len(CLEAN)) * len(NAMES)
-
-
-def write_dataset(directory: Path) -> Path:
-    rng = np.random.default_rng(0)
-    alphabet = list(string.ascii_letters + string.digits)
-    entries = []
-    templates = [(t, [code]) for code, ts in VULNERABLE.items() for t in ts] + [(t, []) for t in CLEAN]
-    for template_index, (template, labels) in enumerate(templates):
-        for variant, (variable, table) in enumerate(NAMES):
-            secret = "".join(rng.choice(alphabet, size=32))
-            relative = f"sample_{template_index}_{variant}.py"
-            (directory / relative).write_text(template.format(v=variable, t=table, secret=secret), encoding="utf-8")
-            entries.append(json.dumps({"path": relative, "labels": labels, "group": f"template-{template_index}"}))
-    manifest = directory / "manifest.jsonl"
-    manifest.write_text("\n".join(entries) + "\n", encoding="utf-8")
-    return manifest
+DATASET_SIZE = template_count() * len(NAMES)
 
 
 @pytest.fixture(scope="module")
