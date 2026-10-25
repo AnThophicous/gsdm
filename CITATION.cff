@@ -1,0 +1,24 @@
+cff-version: 1.2.0
+message: "If you use GSDM in your work, please cite it as below."
+title: "GSDM: Graph-Structural Decision Model"
+abstract: >-
+  A non-transformer, non-autoregressive neural architecture implemented from scratch in NumPy.
+  It reasons over structural graphs of source code (abstract syntax tree, statement flow and
+  definition-to-use data flow) through latent iterative message passing, and returns calibrated,
+  typed decisions with an evidence location instead of generated text. Includes GVF
+  (Graph-based Vulnerability Finder), a Python vulnerability detection model built on GSDM.
+type: software
+authors:
+  - given-names: Brenno
+    family-names: Leon
+version: 1.0.0
+date-released: 2026-10-25
+license: MPL-2.0
+repository-code: "https://github.com/AnThophicous/gsdm"
+keywords:
+  - graph neural network
+  - vulnerability detection
+  - static analysis
+  - confidence calibration
+  - non-autoregressive model
+  - code security
