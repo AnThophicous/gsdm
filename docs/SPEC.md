@@ -194,3 +194,4 @@ Pendente (marco seguinte):
 | 2026-10-25 | ADRs 0004, 0005 e 0008 aceitas; GSDM 0.1.0 implementada. MCP (ADR-0006) movido para 0.2.0. |
 | 2026-10-25 | A base 0.1.0 da ADR-0008 é publicada como versão 1.0.0. O marco seguinte (MCP, treino em lote) passa a ser 1.1.0. |
 | 2026-10-25 | ADR-0009 aceita: a 1.1.0 prioriza treino eficiente em CPU e diagnóstico de aprendizado; MCP e GPU ficam para depois. |
+| 2026-10-25 | 1.1.0 implementada. Na máquina de referência: treino 3× mais rápido, análise 27% mais rápida, metade da memória. |

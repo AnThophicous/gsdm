@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "gsdm"
-version = "1.0.0"
+version = "1.1.0"
 description = "GSDM (Graph-Structural Decision Model): a non-transformer architecture that reasons over code graphs and returns calibrated decisions, with GVF, a Python vulnerability finder."
 readme = "README.md"
 license = "MPL-2.0"

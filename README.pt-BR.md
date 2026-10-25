@@ -53,23 +53,57 @@ python -m venv .venv
 .venv/bin/pytest
 ```
 
-Manifesto de treino em JSONL (caminhos relativos ao manifesto; lista vazia = código limpo):
+Manifesto de treino em JSONL. Caminhos relativos ao manifesto, lista vazia = código limpo, e `group` diz de
+onde o arquivo veio (projeto, CVE, template):
 
 ```json
-{"path": "samples/sql_concat.py", "labels": ["VC-1"]}
-{"path": "samples/safe_query.py", "labels": []}
+{"path": "samples/sql_concat.py", "labels": ["VC-1"], "group": "cve-2024-1234"}
+{"path": "samples/safe_query.py", "labels": [], "group": "api-interna"}
 ```
 
 ```bash
-gvf train dataset/manifest.jsonl --output gvf.npz
+gvf capacity --hidden-size 128                        # parâmetros e memória antes de treinar
+gvf train dataset/manifest.jsonl --output gvf.npz     # logs, painel e checkpoint ficam em gvf.run/
+gvf train dataset/manifest.jsonl --output gvf.npz --epochs 60 --resume   # retoma um treino interrompido
 gvf analyze caminho/do/projeto --model gvf.npz --threshold 0.5
 ```
 
-## Status (1.0.0): leia antes de usar
+Para testar sem instalar nada: [notebook no Google Colab](https://colab.research.google.com/github/AnThophicous/gsdm/blob/main/notebooks/gsdm_colab.ipynb).
 
-- ✅ Arquitetura, treino, calibração, parser Python → grafo, relatório XML e CLI implementados e testados.
+## Está aprendendo ou decorando?
+
+- **Validação por grupo:** um grupo inteiro vai só para o treino ou só para a validação, então a validação mede
+  código de origens que o modelo nunca viu.
+- **Logs de treino no estilo de LLM**, uma linha por época (loss de treino e validação, gap, erro de calibração,
+  F1 por categoria, grafos/s), também gravados em `metrics.jsonl`.
+- **Painel ao vivo** (`dashboard.html`, um arquivo só, sem scripts) com as curvas de treino e validação.
+- **Diagnóstico automático:** `learning`, `memorizing`, `stalled` ou `no-validation`, com a evidência. No dataset
+  sintético de demonstração ele responde, por exemplo: *validation loss rose 28% since epoch 9 while training
+  loss fell 84%*.
+- **Early stopping** com exportação dos melhores pesos de validação, e **checkpoints** que retomam o treino de
+  forma bit a bit idêntica (verificado por teste).
+
+## Desempenho
+
+Medido com `python benchmarks/benchmark.py` na máquina de referência: Celeron N4100 (4 núcleos, sem AVX2),
+3,8 GB de RAM, sem GPU. Mesmo modelo de 53.254 parâmetros nas duas versões.
+
+| | 1.0.0 | 1.1.0 |
+|---|---|---|
+| Treino | 39 grafos/s | **116 grafos/s** (3×) |
+| Analisar um arquivo de 2.000 linhas | 868 ms | **637 ms** |
+| Pico de memória na análise | 34,5 MB | **15,1 MB** |
+
+A GSDM 1.1.0 treina em um processo, em CPU. `gvf capacity --target-parameters 1e10` mostra que 10 bilhões de
+parâmetros exigiriam cerca de 397 GB de memória de treino: isso é trabalho para várias GPUs com treino
+distribuído, que esta versão não oferece.
+
+## Status (1.1.0): leia antes de usar
+
+- ✅ Arquitetura, treino em lote, calibração, parser Python → grafo, relatório XML e CLI implementados e testados.
 - ✅ Cada operação do autograd e o modelo completo têm o gradiente **verificado contra diferenças finitas**.
 - ✅ O modelo aprende e generaliza tarefas relacionais em grafo que não se resolvem sem raciocinar sobre a estrutura.
+- ✅ O treino informa se o modelo está aprendendo ou decorando.
 - ⚠️ **Nenhum modelo GVF treinado vem com o repositório.** Ainda não existe aqui um dataset rotulado de
   vulnerabilidades em Python. Um modelo treinado num conjunto sintético pequeno decora os exemplos e erra código
   novo, então **não** use o GVF para decisões de segurança antes de treiná-lo com dados reais.
@@ -79,8 +113,11 @@ gvf analyze caminho/do/projeto --model gvf.npz --threshold 0.5
 ## Roadmap
 
 - **Dataset** rotulado em Python para VC-1, VC-2 e VC-3.
-- **1.1.0:** servidor MCP para editores e agentes de IA chamarem o GVF localmente ou numa VPS, e treino em lote.
-- Depois: profundidade de raciocínio adaptativa, mais linguagens, fluxo de dados entre arquivos.
+- **Backend de GPU** opcional (CuPy, placas NVIDIA), verificado contra os resultados da CPU no Colab.
+- **Servidor MCP** para editores e agentes de IA chamarem o GVF localmente ou numa VPS.
+- Depois: features esparsas, profundidade de raciocínio adaptativa, mais linguagens, fluxo de dados entre arquivos.
+
+O que mudou em cada versão está no [CHANGELOG.md](CHANGELOG.md).
 
 ## Princípios de engenharia
 
