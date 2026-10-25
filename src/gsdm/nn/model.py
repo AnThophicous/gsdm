@@ -10,7 +10,7 @@ from typing import Any
 import numpy as np
 
 from gsdm.graph import StructuralGraph
-from gsdm.nn.decision import AttentionDecisionHead, DecisionOutput
+from gsdm.nn.decision import AttentionDecisionHead, BatchDecisionOutput, DecisionOutput
 from gsdm.nn.module import Module
 from gsdm.nn.reasoning import LatentReasoningEncoder
 
@@ -44,6 +44,12 @@ class GSDModel(Module):
         self.head = AttentionDecisionHead(config.hidden_size, config.decision_count, rng)
 
     def __call__(self, graph: StructuralGraph, reasoning_steps: int | None = None) -> DecisionOutput:
-        if graph.feature_size != self.config.feature_size:
-            raise ValueError(f"graph has {graph.feature_size} features, model expects {self.config.feature_size}")
-        return self.head(self.encoder(graph, reasoning_steps))
+        if graph.graph_count != 1:
+            raise ValueError("use forward_batch() for a batch of graphs")
+        output = self.forward_batch(graph, reasoning_steps)
+        return DecisionOutput(logits=output.logits.reshape(self.config.decision_count), attention=output.attention)
+
+    def forward_batch(self, batch: StructuralGraph, reasoning_steps: int | None = None) -> BatchDecisionOutput:
+        if batch.feature_size != self.config.feature_size:
+            raise ValueError(f"graph has {batch.feature_size} features, model expects {self.config.feature_size}")
+        return self.head(self.encoder(batch, reasoning_steps), batch.segments)

@@ -6,6 +6,8 @@ from gsdm.graph import StructuralGraph
 from gsdm.nn import GSDMConfig, GSDModel, LayerNorm, Linear
 from tests.gradient_check import assert_gradients_match
 
+pytestmark = pytest.mark.usefixtures("float64_precision")
+
 
 def small_graph(rng: np.random.Generator, feature_size: int = 5) -> StructuralGraph:
     edges = [[(0, 1), (1, 2), (2, 3)], [(1, 0), (2, 1), (3, 2)], [(0, 3)]]
@@ -50,6 +52,44 @@ def test_full_model_gradients_through_every_parameter():
         model.parameters(),
         tolerance=1e-5,
     )
+
+
+def test_batched_forward_matches_each_graph_alone():
+    rng = np.random.default_rng(8)
+    graphs = [small_graph(rng) for _ in range(3)]
+    graphs.append(StructuralGraph.from_edge_lists(rng.normal(size=(6, 5)), [[(0, 5)], [], [(2, 3), (4, 3)]]))
+    model = small_model()
+    batch_output = model.forward_batch(StructuralGraph.batch(graphs))
+
+    assert batch_output.logits.shape == (4, 2)
+    for index, graph in enumerate(graphs):
+        alone = model(graph)
+        np.testing.assert_allclose(batch_output.logits.data[index], alone.logits.data, rtol=1e-9, atol=1e-12)
+        for decision in range(2):
+            assert batch_output.evidence_node(index, decision) == alone.evidence_node(decision)
+
+
+def test_batched_gradients_through_every_parameter():
+    rng = np.random.default_rng(9)
+    batch = StructuralGraph.batch([small_graph(rng), small_graph(rng)])
+    model = small_model()
+    targets = np.array([[1.0, 0.0], [0.0, 1.0]])
+    assert_gradients_match(
+        lambda: binary_cross_entropy_with_logits(model.forward_batch(batch).logits, targets),
+        model.parameters(),
+        tolerance=1e-5,
+    )
+
+
+def test_single_graph_call_rejects_a_batch():
+    rng = np.random.default_rng(10)
+    with pytest.raises(ValueError):
+        small_model()(StructuralGraph.batch([small_graph(rng), small_graph(rng)]))
+
+
+def test_parameter_count():
+    model = small_model(relation_count=2)
+    assert model.parameter_count() == sum(value.size for value in model.state_dict().values())
 
 
 def test_model_output_shapes():

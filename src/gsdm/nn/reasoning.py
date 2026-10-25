@@ -6,7 +6,7 @@ from __future__ import annotations
 
 import numpy as np
 
-from gsdm.autograd import Tensor, propagate, relu, tanh
+from gsdm.autograd import Tensor, propagate_along, relu, tanh
 from gsdm.graph import StructuralGraph
 from gsdm.nn.layers import LayerNorm, Linear
 from gsdm.nn.module import Module, Parameter, glorot_uniform
@@ -26,8 +26,7 @@ class ReasoningStep(Module):
         update = self.self_update(states)
         for relation, weight in zip(graph.relations, self.relation_weights):
             if relation.edge_count:
-                messages = propagate(states, relation.sources, relation.targets, relation.weights)
-                update = update + messages @ weight
+                update = update + propagate_along(states, relation) @ weight
         return self.normalization(states + relu(update))
 
 

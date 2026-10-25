@@ -24,6 +24,9 @@ class Module:
     def parameters(self) -> list[Parameter]:
         return [parameter for _, parameter in self.named_parameters()]
 
+    def parameter_count(self) -> int:
+        return sum(parameter.data.size for parameter in self.parameters())
+
     def zero_grad(self) -> None:
         for parameter in self.parameters():
             parameter.grad = None
@@ -40,7 +43,7 @@ class Module:
             if parameter.shape != state[name].shape:
                 raise ValueError(f"shape mismatch for {name}: {parameter.shape} != {state[name].shape}")
         for name, parameter in own.items():
-            parameter.data = np.array(state[name], dtype=np.float64, copy=True)
+            parameter.data = np.array(state[name], dtype=parameter.data.dtype, copy=True)
 
 
 def _named_parameters_of(value: object, name: str) -> Iterator[tuple[str, Parameter]]:

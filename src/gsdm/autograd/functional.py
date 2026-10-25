@@ -6,6 +6,7 @@ from __future__ import annotations
 
 import numpy as np
 
+from gsdm.autograd.scatter import Route, Segments
 from gsdm.autograd.tensor import Tensor
 
 
@@ -52,29 +53,55 @@ def softmax(value: Tensor, axis: int) -> Tensor:
     return Tensor.from_operation(output, (value,), backward)
 
 
+def segment_softmax(value: Tensor, segments: Segments) -> Tensor:
+    """Softmax over rows, computed independently inside each segment (column-wise)."""
+    shifted = value.data - segments.broadcast(segments.maximum(value.data))
+    exponentials = np.exp(shifted)
+    output = exponentials / segments.broadcast(segments.sum(exponentials))
+
+    def backward(gradient: np.ndarray) -> None:
+        weighted_sum = segments.broadcast(segments.sum(gradient * output))
+        value.accumulate_grad(output * (gradient - weighted_sum))
+
+    return Tensor.from_operation(output, (value,), backward)
+
+
+def segment_sum(value: Tensor, segments: Segments) -> Tensor:
+    """Sums the rows of each segment: (rows, ...) -> (segments, ...)."""
+
+    def backward(gradient: np.ndarray) -> None:
+        value.accumulate_grad(segments.broadcast(gradient))
+
+    return Tensor.from_operation(segments.sum(value.data), (value,), backward)
+
+
+def propagate_along(node_states: Tensor, route: Route) -> Tensor:
+    """Sparse message passing: out[target] += weight * node_states[source] for each edge of the route."""
+    weights = route.weights.astype(node_states.data.dtype, copy=False)[:, None]
+    output = route.target_plan.apply(node_states.data[route.sources] * weights)
+
+    def backward(gradient: np.ndarray) -> None:
+        node_states.accumulate_grad(route.source_plan.apply(gradient[route.targets] * weights))
+
+    return Tensor.from_operation(output, (node_states,), backward)
+
+
 def propagate(
     node_states: Tensor,
     sources: np.ndarray,
     targets: np.ndarray,
     weights: np.ndarray,
 ) -> Tensor:
-    """Sparse message passing: out[target] += weight * node_states[source] for each edge."""
-    output = np.zeros_like(node_states.data)
-    np.add.at(output, targets, node_states.data[sources] * weights[:, None])
-
-    def backward(gradient: np.ndarray) -> None:
-        source_gradient = np.zeros_like(node_states.data)
-        np.add.at(source_gradient, sources, gradient[targets] * weights[:, None])
-        node_states.accumulate_grad(source_gradient)
-
-    return Tensor.from_operation(output, (node_states,), backward)
+    """Same as propagate_along, for ad-hoc edges; plans are rebuilt on every call."""
+    route = Route(np.asarray(sources), np.asarray(targets), np.asarray(weights), node_states.shape[0])
+    return propagate_along(node_states, route)
 
 
 def binary_cross_entropy_with_logits(logits: Tensor, targets: np.ndarray) -> Tensor:
-    targets = np.asarray(targets, dtype=np.float64)
+    x = logits.data
+    targets = np.asarray(targets, dtype=x.dtype)
     if targets.shape != logits.shape:
         raise ValueError(f"targets shape {targets.shape} does not match logits shape {logits.shape}")
-    x = logits.data
     losses = np.maximum(x, 0.0) - x * targets + np.log1p(np.exp(-np.abs(x)))
 
     def backward(gradient: np.ndarray) -> None:

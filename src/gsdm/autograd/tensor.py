@@ -12,6 +12,7 @@ import numpy as np
 Backward = Callable[[np.ndarray], None]
 
 _gradient_tracking_enabled = True
+_default_dtype: type[np.floating] = np.float32
 
 
 @contextmanager
@@ -25,11 +26,29 @@ def no_grad() -> Iterator[None]:
         _gradient_tracking_enabled = previous
 
 
+def get_default_dtype() -> type[np.floating]:
+    return _default_dtype
+
+
+@contextmanager
+def default_dtype(dtype: type[np.floating]) -> Iterator[None]:
+    """Tensors created inside the block use dtype. float32 is the default; float64 is for gradient checks."""
+    global _default_dtype
+    if dtype not in (np.float32, np.float64):
+        raise ValueError("default dtype must be numpy.float32 or numpy.float64")
+    previous = _default_dtype
+    _default_dtype = dtype
+    try:
+        yield
+    finally:
+        _default_dtype = previous
+
+
 class Tensor:
     __array_priority__ = 1000
 
     def __init__(self, data: np.ndarray | float, requires_grad: bool = False) -> None:
-        self.data = np.asarray(data, dtype=np.float64)
+        self.data = np.asarray(data, dtype=_default_dtype)
         self.grad: np.ndarray | None = None
         self.requires_grad = requires_grad
         self._parents: tuple[Tensor, ...] = ()
@@ -59,9 +78,9 @@ class Tensor:
         if not self.requires_grad:
             return
         if self.grad is None:
-            self.grad = np.array(gradient, dtype=np.float64, copy=True)
+            self.grad = np.array(gradient, dtype=self.data.dtype, copy=True)
         else:
-            self.grad = self.grad + gradient
+            self.grad = self.grad + np.asarray(gradient, dtype=self.data.dtype)
 
     def backward(self) -> None:
         if self.data.size != 1:
@@ -128,6 +147,9 @@ class Tensor:
 
     def mean(self, axis: int | None = None, keepdims: bool = False) -> Tensor:
         return reduce_mean(self, axis, keepdims)
+
+    def reshape(self, *shape: int) -> Tensor:
+        return reshape(self, shape)
 
     def __repr__(self) -> str:
         return f"Tensor(shape={self.shape}, requires_grad={self.requires_grad})"
@@ -200,6 +222,13 @@ def power(base: Tensor, exponent: float) -> Tensor:
         base.accumulate_grad(gradient * exponent * base.data ** (exponent - 1))
 
     return Tensor.from_operation(base.data**exponent, (base,), backward)
+
+
+def reshape(value: Tensor, shape: tuple[int, ...]) -> Tensor:
+    def backward(gradient: np.ndarray) -> None:
+        value.accumulate_grad(gradient.reshape(value.shape))
+
+    return Tensor.from_operation(value.data.reshape(shape), (value,), backward)
 
 
 def transpose(value: Tensor) -> Tensor:
