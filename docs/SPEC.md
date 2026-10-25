@@ -138,6 +138,10 @@ edita a antiga). Registradas até agora:
   diagnóstico de aprendizado (validação por grupo, logs, painel,
   checkpoints, early stopping) — versão 1.1.0.
 
+- [ADR-0010](adr/0010-cvefixes-dataset.md) — Dataset do GVF a partir do
+  CVEfixes: pares antes/depois de correções reais, grupo por repositório,
+  censo antes de construir.
+
 Pendente (marco seguinte):
 
 - ADR-0006 — Transporte MCP: contrato da tool `analyze_path`, modo local vs.
