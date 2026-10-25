@@ -133,10 +133,10 @@ edita a antiga). Registradas até agora:
   implementação da GSDM 0.1.0 (Python como linguagem-alvo, NumPy puro,
   autograd próprio, limitações assumidas).
 
-Pendente (marco 0.2.0):
+Pendente (marco 1.1.0):
 
 - ADR-0006 — Transporte MCP: contrato da tool `analyze_path`, modo local vs.
-  remoto. A 0.1.0 expõe apenas CLI.
+  remoto. A 1.0.0 expõe apenas CLI.
 
 ## 6. Acceptance Criteria (para o MVP fechar)
 
@@ -187,3 +187,4 @@ Pendente (marco 0.2.0):
 | 2026-10-25 | Rascunho inicial. Escopo MVP fechado em VC-1/VC-2/VC-3.   |
 | 2026-10-25 | Projeto nomeado: arquitetura GSDM, modelo GVF. Licença definida (MPL 2.0). ADR-0007 (raciocínio latente) aceita. |
 | 2026-10-25 | ADRs 0004, 0005 e 0008 aceitas; GSDM 0.1.0 implementada. MCP (ADR-0006) movido para 0.2.0. |
+| 2026-10-25 | A base 0.1.0 da ADR-0008 é publicada como versão 1.0.0. O marco seguinte (MCP, treino em lote) passa a ser 1.1.0. |
