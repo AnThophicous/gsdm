@@ -16,3 +16,6 @@ htmlcov/
 .env
 .idea/
 .vscode/
+
+# Internal task documents (not published)
+docs/dataset-spec.md
