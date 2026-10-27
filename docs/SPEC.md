@@ -142,6 +142,9 @@ edita a antiga). Registradas até agora:
   CVEfixes: pares antes/depois de correções reais, grupo por repositório,
   censo antes de construir.
 
+A tarefa de coleta do dataset, escrita para ser executada por um agente, está em
+[dataset-spec.md](dataset-spec.md).
+
 Pendente (marco seguinte):
 
 - ADR-0006 — Transporte MCP: contrato da tool `analyze_path`, modo local vs.
